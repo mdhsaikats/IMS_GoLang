@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
-	"math/rand" // Make sure we are using the standard math/rand
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -20,16 +20,74 @@ type Inventory struct {
 	ExpiryDate string
 }
 
+type User struct {
+	Username string
+	Password string
+	Role     string // Admin, Manager, Staff
+}
+
 var inventory []Inventory
 var lastOperation string // Tracks the last operation for undo
 const fileName = "inventory.txt"
 const lowStockThreshold = 10
+
+var currentUser *User
+
+// Define hardcoded users for demo purposes
+var users = []User{
+	{"mork", "$@!k@t29||2oo3", "Mork"},
+	{"manager", "manager123", "Manager"},
+	{"staff", "staff123", "Staff"},
+}
+
+func login() {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Enter username: ")
+	username, _ := reader.ReadString('\n')
+	username = strings.TrimSpace(username)
+	fmt.Print("Enter password: ")
+	password, _ := reader.ReadString('\n')
+	password = strings.TrimSpace(password)
+
+	// Authenticate user
+	for _, user := range users {
+		if user.Username == username && user.Password == password {
+			currentUser = &user
+			fmt.Printf("Welcome %s! You are logged in as %s.\n", username, user.Role)
+			return
+		}
+	}
+	fmt.Println("Invalid username or password.")
+	login() // Recurse if authentication fails
+}
+
+func hasPermission(requiredRole string) bool {
+	if currentUser == nil {
+		fmt.Println("You must be logged in to perform this action.")
+		return false
+	}
+	roles := map[string]int{
+		"Admin":   3,
+		"Manager": 2,
+		"Staff":   1,
+	}
+
+	// If the current user's role has the required access level, return true
+	if roles[currentUser.Role] >= roles[requiredRole] {
+		return true
+	}
+	fmt.Println("You don't have permission to perform this action.")
+	return false
+}
 
 func toLowerCase(str string) string {
 	return strings.ToLower(str)
 }
 
 func push(name string, quantity int, category string, price float64, expiryDate string) {
+	if !hasPermission("Manager") {
+		return
+	}
 	name = toLowerCase(name)
 	for i, item := range inventory {
 		if toLowerCase(item.Name) == name {
@@ -46,6 +104,9 @@ func push(name string, quantity int, category string, price float64, expiryDate 
 }
 
 func showInventory() {
+	if !hasPermission("Staff") {
+		return
+	}
 	if len(inventory) == 0 {
 		fmt.Println("There is no product in the inventory")
 		return
@@ -57,6 +118,9 @@ func showInventory() {
 }
 
 func deadStock() {
+	if !hasPermission("Staff") {
+		return
+	}
 	deadStockFound := false
 	fmt.Println("Dead Stock:")
 	for _, item := range inventory {
@@ -71,6 +135,9 @@ func deadStock() {
 }
 
 func sell(name string, quantity int) {
+	if !hasPermission("Staff") {
+		return
+	}
 	name = toLowerCase(name)
 	for i, item := range inventory {
 		if toLowerCase(item.Name) == name {
@@ -90,6 +157,9 @@ func sell(name string, quantity int) {
 }
 
 func deleteProduct(name string) {
+	if !hasPermission("Admin") {
+		return
+	}
 	name = toLowerCase(name)
 	for i, item := range inventory {
 		if toLowerCase(item.Name) == name {
@@ -104,6 +174,9 @@ func deleteProduct(name string) {
 }
 
 func lowStockAlert() {
+	if !hasPermission("Staff") {
+		return
+	}
 	fmt.Println("Low Stock Alert:")
 	for _, item := range inventory {
 		if item.Quantity < lowStockThreshold {
@@ -113,6 +186,9 @@ func lowStockAlert() {
 }
 
 func search(query string) {
+	if !hasPermission("Staff") {
+		return
+	}
 	query = toLowerCase(query)
 	matchesFound := false
 
@@ -129,6 +205,9 @@ func search(query string) {
 }
 
 func exportToCSV() {
+	if !hasPermission("Manager") {
+		return
+	}
 	file, err := os.Create("inventory_export.csv")
 	if err != nil {
 		fmt.Println("Error creating CSV file:", err)
@@ -152,6 +231,9 @@ func exportToCSV() {
 }
 
 func undoLastOperation() {
+	if !hasPermission("Admin") {
+		return
+	}
 	// Based on the last operation, undo it
 	if lastOperation == "add" {
 		// Remove the last added product
@@ -191,6 +273,7 @@ func printBoxedText(text string) {
 }
 
 func start() {
+	login()
 	text := "Welcome to IMS"
 	printBoxedText(text)
 	fmt.Println("Press Enter to continue...")
@@ -236,7 +319,7 @@ func saveToFile() {
 
 func generateID() string {
 	timestamp := time.Now().Unix()
-	randomNum := rand.Intn(10000)
+	randomNum := rand.Intn(10000) // Using math/rand here
 	return fmt.Sprintf("%d-%d", timestamp, randomNum)
 }
 
