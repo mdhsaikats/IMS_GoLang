@@ -23,7 +23,7 @@ type Inventory struct {
 type User struct {
 	Username string
 	Password string
-	Role     string // Admin, Manager, Staff
+	Role     string // Mork, Manager, Staff
 }
 
 var inventory []Inventory
@@ -35,7 +35,7 @@ var currentUser *User
 
 // Define hardcoded users for demo purposes
 var users = []User{
-	{"mork", "$@!k@t29||2oo3", "Mork"},
+	{"mork", "29112003", "Mork"},
 	{"manager", "manager123", "Manager"},
 	{"staff", "staff123", "Staff"},
 }
@@ -67,7 +67,7 @@ func hasPermission(requiredRole string) bool {
 		return false
 	}
 	roles := map[string]int{
-		"Admin":   3,
+		"Mork":    3,
 		"Manager": 2,
 		"Staff":   1,
 	}
@@ -157,7 +157,7 @@ func sell(name string, quantity int) {
 }
 
 func deleteProduct(name string) {
-	if !hasPermission("Admin") {
+	if !hasPermission("Mork") {
 		return
 	}
 	name = toLowerCase(name)
@@ -231,7 +231,7 @@ func exportToCSV() {
 }
 
 func undoLastOperation() {
-	if !hasPermission("Admin") {
+	if !hasPermission("Mork") {
 		return
 	}
 	// Based on the last operation, undo it
